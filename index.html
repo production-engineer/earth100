@@ -300,6 +300,45 @@
     .sort-asc::after { content: ' ↑'; color: #00c471; }
     .sort-desc::after { content: ' ↓'; color: #00c471; }
 
+    /* ── Weight controls ── */
+    .weight-ctrl { display: flex; align-items: center; gap: 4px; }
+    .weight-btn {
+      width: 26px; height: 26px; flex-shrink: 0;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 6px; color: #faf8f5;
+      font-size: 15px; line-height: 1; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, border-color 0.15s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .weight-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(0,196,113,0.5); color: #00c471; }
+    .weight-input {
+      width: 46px; height: 26px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px; padding: 0 4px;
+      color: #faf8f5; font-family: 'DM Sans', sans-serif;
+      font-size: 13px; text-align: center; outline: none;
+    }
+    .weight-input:focus { border-color: rgba(0,196,113,0.5); }
+    .weight-pct-label { font-size: 11px; color: rgba(250,248,245,0.35); }
+    .rerun-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px;
+      margin-top: 20px;
+    }
+    .rerun-note { font-size: 13px; color: rgba(250,248,245,0.4); }
+    .btn-rerun {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 28px; background: #00c471; color: #0a121f;
+      font-size: 14px; font-weight: 700; border-radius: 9999px; border: none;
+      font-family: 'DM Sans', sans-serif; cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .btn-rerun:hover { background: #60bb83; transform: translateY(-1px); }
+    .btn-rerun svg { flex-shrink: 0; }
+
     /* ── Divider ── */
     .divider { height: 1px; background: rgba(255,255,255,0.07); border: none; }
   </style>
@@ -417,6 +456,8 @@
     <h2 class="section-title">Positions</h2>
     <p class="section-sub">Click a column header to sort · CAGR rule: &ge;25% annual growth to avoid scrutiny</p>
 
+    <p class="section-sub" style="margin-top:-16px; margin-bottom:20px; font-size:13px;">Adjust weights below, then press <strong style="color:#faf8f5;">Rerun Simulation</strong> to recompute your allocation and portfolio metrics.</p>
+
     <div class="holdings-wrap">
       <table id="holdings-table">
         <thead>
@@ -430,10 +471,19 @@
             <th onclick="sortTable(6)">Value</th>
             <th onclick="sortTable(7)">Return</th>
             <th>CAGR Rule</th>
+            <th style="min-width:130px;">Weight %</th>
           </tr>
         </thead>
         <tbody id="holdings-body"></tbody>
       </table>
+    </div>
+
+    <div class="rerun-bar">
+      <span class="rerun-note">Weights don't need to sum to 100 — they'll be normalized on rerun.</span>
+      <button class="btn-rerun" onclick="rerunSimulation()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Rerun Simulation
+      </button>
     </div>
   </div>
 </section>
@@ -736,7 +786,7 @@
   });
   const catEntries = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
 
-  new Chart(document.getElementById('donutChart'), {
+  let donutChart = new Chart(document.getElementById('donutChart'), {
     type: 'doughnut',
     data: {
       labels: catEntries.map(([cat]) => cat),
@@ -760,35 +810,100 @@
           bodyColor: 'rgba(250,248,245,0.7)',
           padding: 12,
           callbacks: {
-            label: ctx => ` ${ctx.label}: ${((ctx.parsed / totalValue) * 100).toFixed(1)}%'`
+            label: ctx => {
+              const sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+              return ` ${ctx.label}: ${((ctx.parsed / sum) * 100).toFixed(1)}%`;
+            }
           }
         }
       }
     }
   });
 
-  const allocTable = document.getElementById('alloc-table');
-  catEntries.forEach(([cat, val]) => {
-    const pct = (val / totalValue) * 100;
-    const color = CAT_COLORS[cat] || '#bfbfbf';
-    allocTable.insertAdjacentHTML('beforeend', `
-      <div class="alloc-row">
-        <div class="alloc-swatch" style="background:${color};"></div>
-        <div class="alloc-name">${cat}</div>
-        <div class="alloc-bar-wrap">
-          <div class="alloc-bar" style="width:${pct}%; background:${color};"></div>
+  function renderAllocTable(entries, totalVal) {
+    const allocTable = document.getElementById('alloc-table');
+    allocTable.innerHTML = '';
+    entries.forEach(([cat, val]) => {
+      const pct = (val / totalVal) * 100;
+      const color = CAT_COLORS[cat] || '#bfbfbf';
+      allocTable.insertAdjacentHTML('beforeend', `
+        <div class="alloc-row">
+          <div class="alloc-swatch" style="background:${color};"></div>
+          <div class="alloc-name">${cat}</div>
+          <div class="alloc-bar-wrap">
+            <div class="alloc-bar" style="width:${pct}%; background:${color};"></div>
+          </div>
+          <div class="alloc-pct">${pct.toFixed(1)}%</div>
+          <div class="alloc-val">${fmt(val)}</div>
         </div>
-        <div class="alloc-pct">${pct.toFixed(1)}%</div>
-        <div class="alloc-val">${fmt(val)}</div>
-      </div>
-    `);
+      `);
+    });
+  }
+  renderAllocTable(catEntries, totalValue);
+
+  // ── Weight state ──
+  const customWeights = {};
+  HOLDINGS.forEach(h => {
+    customWeights[h.ticker] = Math.round((h.value / totalValue) * 100);
   });
+  // Fix rounding so weights start at exactly 100
+  const initWSum = Object.values(customWeights).reduce((a, b) => a + b, 0);
+  customWeights['TSLA'] += (100 - initWSum);
+
+  let simValues = null; // null = show original data
+
+  function adjustWeight(ticker, delta) {
+    customWeights[ticker] = Math.max(0, customWeights[ticker] + delta);
+    const el = document.getElementById('w-' + ticker);
+    if (el) el.value = customWeights[ticker];
+  }
+
+  function onWeightInput(ticker, val) {
+    customWeights[ticker] = Math.max(0, parseInt(val) || 0);
+  }
+
+  function rerunSimulation() {
+    const wTotal = Object.values(customWeights).reduce((a, b) => a + b, 0);
+    if (wTotal === 0) return;
+
+    simValues = {};
+    let newTotalCost = 0;
+    HOLDINGS.forEach(h => {
+      const sv = totalValue * (customWeights[h.ticker] / wTotal);
+      const sc = sv / (1 + h.gainPct / 100);
+      simValues[h.ticker] = { value: sv, cost: sc };
+      newTotalCost += sc;
+    });
+
+    const newGain = totalValue - newTotalCost;
+
+    // KPIs
+    document.getElementById('kpi-value').textContent    = fmt(totalValue);
+    document.getElementById('kpi-invested').textContent = fmt(newTotalCost);
+    const retEl = document.getElementById('kpi-return');
+    retEl.textContent = (newGain >= 0 ? '+' : '') + fmt(newGain);
+    retEl.className   = 'kpi-value ' + (newGain >= 0 ? 'green' : 'red');
+
+    // Allocation
+    const catTotals = {};
+    HOLDINGS.forEach(h => { catTotals[h.cat] = (catTotals[h.cat] || 0) + simValues[h.ticker].value; });
+    const newCatEntries = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
+    donutChart.data.labels                        = newCatEntries.map(([c]) => c);
+    donutChart.data.datasets[0].data              = newCatEntries.map(([, v]) => v);
+    donutChart.data.datasets[0].backgroundColor   = newCatEntries.map(([c]) => CAT_COLORS[c] || '#bfbfbf');
+    donutChart.update();
+    renderAllocTable(newCatEntries, totalValue);
+
+    renderHoldings();
+  }
 
   // ── Holdings table ──
   let sortCol = 6, sortDir = -1;
 
   function renderHoldings() {
     const sorted = [...HOLDINGS].sort((a, b) => {
+      const sv_a = simValues && simValues[a.ticker];
+      const sv_b = simValues && simValues[b.ticker];
       const vals = [
         [a.ticker, b.ticker],
         [a.name, b.name],
@@ -796,7 +911,7 @@
         [a.shares, b.shares],
         [a.avg, b.avg],
         [a.price, b.price],
-        [a.value, b.value],
+        [sv_a ? sv_a.value : a.value, sv_b ? sv_b.value : b.value],
         [a.gainPct, b.gainPct],
       ];
       const [av, bv] = vals[sortCol];
@@ -807,7 +922,9 @@
     const tbody = document.getElementById('holdings-body');
     tbody.innerHTML = '';
     sorted.forEach(h => {
-      const color = CAT_COLORS[h.cat] || '#bfbfbf';
+      const color    = CAT_COLORS[h.cat] || '#bfbfbf';
+      const sv       = simValues && simValues[h.ticker];
+      const dispVal  = sv ? sv.value : h.value;
       const cagrBadge = h.cagrPass === null
         ? `<span class="cagr-na">N/A</span>`
         : h.cagrPass
@@ -822,14 +939,23 @@
           <td>${h.shares.toLocaleString()}</td>
           <td>${fmtPrice(h.avg)}</td>
           <td>${fmtPrice(h.price)}</td>
-          <td>${fmt(h.value)}</td>
+          <td>${fmt(dispVal)}</td>
           <td class="${h.gainPct >= 0 ? 'gain-positive' : 'gain-negative'}">${fmtPct(h.gainPct)}</td>
           <td>${cagrBadge}</td>
+          <td>
+            <div class="weight-ctrl">
+              <button class="weight-btn" onclick="adjustWeight('${h.ticker}', -1)">−</button>
+              <input class="weight-input" id="w-${h.ticker}" type="number" value="${customWeights[h.ticker]}"
+                min="0" max="100" oninput="onWeightInput('${h.ticker}', this.value)" />
+              <button class="weight-btn" onclick="adjustWeight('${h.ticker}', 1)">+</button>
+              <span class="weight-pct-label">%</span>
+            </div>
+          </td>
         </tr>
       `);
     });
 
-    // Update sort indicators
+    // Sort indicators (skip weight col at index 9)
     document.querySelectorAll('thead th').forEach((th, i) => {
       th.className = '';
       if (i === sortCol) th.className = sortDir === 1 ? 'sort-asc' : 'sort-desc';
