@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Earth100 — Portfolio Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 16px;
+      font-weight: 430;
+      letter-spacing: 0.013em;
+      background: #0a121f;
+      color: #faf8f5;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.7;
+    }
+    h1, h2, h3, h4 { font-family: 'Instrument Serif', Georgia, serif; line-height: 1.2; letter-spacing: 0; }
+
+    /* ── Nav ── */
+    #main-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 14px 20px;
+    }
+    #nav-pill {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      border-radius: 9999px; padding: 11px 24px;
+      background: rgba(10,18,31,0.55);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: background 0.35s ease, box-shadow 0.35s ease;
+      animation: settle 0.5s ease both;
+    }
+    @keyframes settle { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+    #main-nav.scrolled #nav-pill {
+      background: rgba(10,18,31,0.95);
+      box-shadow: 0 6px 32px rgba(0,0,0,0.4);
+    }
+    .nav-logo {
+      font-family: 'Instrument Serif', serif;
+      font-size: 18px; color: #faf8f5; text-decoration: none;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .nav-logo .accent { color: #00c471; }
+    .nav-links { display: flex; gap: 24px; }
+    .nav-links a {
+      font-size: 14px; font-weight: 500;
+      color: rgba(250,248,245,0.7); text-decoration: none;
+      transition: color 0.18s;
+    }
+    .nav-links a:hover { color: #faf8f5; }
+    .sim-badge {
+      padding: 5px 14px; background: rgba(239,167,18,0.15);
+      color: #efa712; font-size: 11px; font-weight: 700;
+      border-radius: 9999px; border: 1px solid rgba(239,167,18,0.3);
+      letter-spacing: 0.12em; text-transform: uppercase;
+    }
+
+    /* ── Simulation banner ── */
+    .sim-banner {
+      background: rgba(239,167,18,0.08);
+      border-bottom: 1px solid rgba(239,167,18,0.2);
+      text-align: center;
+      padding: 10px 20px;
+      margin-top: 64px;
+      font-size: 13px;
+      color: rgba(239,167,18,0.9);
+    }
+    .sim-banner strong { color: #efa712; }
+
+    /* ── Layout ── */
+    .section { padding: 60px 24px; }
+    .inner { max-width: 1100px; margin: 0 auto; }
+
+    /* ── Hero / KPI strip ── */
+    #hero { padding: 56px 24px 48px; }
+    .hero-label {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.18em;
+      text-transform: uppercase; color: #00c471; margin-bottom: 6px;
+    }
+    .hero-title { font-size: clamp(2.2rem, 4vw, 3.2rem); margin-bottom: 6px; }
+    .hero-sub { font-size: 15px; color: rgba(250,248,245,0.55); margin-bottom: 40px; }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 768px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .nav-links { display: none; }
+    }
+    .kpi-card {
+      background: #162235;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px;
+      padding: 22px 24px;
+      transition: border-color 0.3s;
+    }
+    .kpi-card:hover { border-color: rgba(0,196,113,0.25); }
+    .kpi-label {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.12em;
+      text-transform: uppercase; color: rgba(250,248,245,0.45);
+      margin-bottom: 8px;
+    }
+    .kpi-value {
+      font-size: 2rem; font-family: 'Instrument Serif', serif;
+      line-height: 1; color: #faf8f5;
+    }
+    .kpi-value.green { color: #00c471; }
+    .kpi-value.red { color: #e1460e; }
+    .kpi-sub {
+      font-size: 12px; color: rgba(250,248,245,0.45); margin-top: 6px;
+    }
+
+    /* ── Section headers ── */
+    .section-eyebrow {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.18em;
+      text-transform: uppercase; color: #00c471; margin-bottom: 8px;
+    }
+    .section-title { font-size: clamp(1.6rem, 2.5vw, 2.2rem); margin-bottom: 6px; }
+    .section-sub { font-size: 14px; color: rgba(250,248,245,0.5); margin-bottom: 32px; }
+
+    /* ── Chart wrapper ── */
+    .chart-card {
+      background: #162235;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 20px;
+      padding: 28px;
+    }
+    .chart-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
+    }
+    .chart-legend { display: flex; gap: 20px; flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(250,248,245,0.7); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* ── Allocation grid ── */
+    .alloc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 640px) { .alloc-grid { grid-template-columns: 1fr; } }
+    .donut-wrap { display: flex; justify-content: center; align-items: center; }
+    .alloc-table { width: 100%; }
+    .alloc-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .alloc-row:last-child { border-bottom: none; }
+    .alloc-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+    .alloc-name { flex: 1; font-size: 14px; }
+    .alloc-bar-wrap { width: 80px; height: 4px; background: rgba(255,255,255,0.08); border-radius: 4px; }
+    .alloc-bar { height: 100%; border-radius: 4px; }
+    .alloc-pct { font-size: 13px; font-weight: 600; color: rgba(250,248,245,0.8); min-width: 36px; text-align: right; }
+    .alloc-val { font-size: 12px; color: rgba(250,248,245,0.45); min-width: 60px; text-align: right; }
+
+    /* ── Holdings table ── */
+    .holdings-wrap { overflow-x: auto; border-radius: 16px; border: 1px solid rgba(255,255,255,0.07); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    thead th {
+      background: #162235;
+      padding: 14px 16px;
+      text-align: left;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: rgba(250,248,245,0.45);
+      cursor: pointer; user-select: none;
+      white-space: nowrap;
+    }
+    thead th:hover { color: rgba(250,248,245,0.8); }
+    tbody tr {
+      border-top: 1px solid rgba(255,255,255,0.05);
+      transition: background 0.15s;
+    }
+    tbody tr:hover { background: rgba(255,255,255,0.03); }
+    tbody td { padding: 14px 16px; vertical-align: middle; }
+    .ticker-cell { font-weight: 700; font-size: 13px; color: #00c471; }
+    .name-cell { color: rgba(250,248,245,0.8); font-size: 13px; }
+    .cat-pill {
+      display: inline-block;
+      padding: 3px 10px; border-radius: 9999px;
+      font-size: 11px; font-weight: 600; white-space: nowrap;
+    }
+    .gain-positive { color: #00c471; font-weight: 600; }
+    .gain-negative { color: #e1460e; font-weight: 600; }
+    .cagr-pass {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(0,196,113,0.12); color: #00c471;
+      border-radius: 9999px; padding: 3px 10px; font-size: 11px; font-weight: 600;
+    }
+    .cagr-fail {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(225,70,14,0.12); color: #e1460e;
+      border-radius: 9999px; padding: 3px 10px; font-size: 11px; font-weight: 600;
+    }
+    .cagr-na {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(191,191,191,0.12); color: rgba(250,248,245,0.35);
+      border-radius: 9999px; padding: 3px 10px; font-size: 11px; font-weight: 600;
+    }
+
+    /* ── Rules ── */
+    .rules-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 768px) { .rules-grid { grid-template-columns: 1fr; } }
+    .rule-card {
+      background: #162235;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px;
+      padding: 22px;
+    }
+    .rule-num {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+      color: #00c471; margin-bottom: 8px;
+    }
+    .rule-text { font-size: 14px; color: rgba(250,248,245,0.75); line-height: 1.6; }
+
+    /* ── Deal memo ── */
+    .memo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 768px) { .memo-grid { grid-template-columns: 1fr; } }
+    .memo-form { background: #162235; border: 1px solid rgba(255,255,255,0.07); border-radius: 20px; padding: 28px; }
+    .memo-output { background: #0f1c2e; border: 1px solid rgba(255,255,255,0.07); border-radius: 20px; padding: 28px; min-height: 400px; }
+    .field-group { margin-bottom: 18px; }
+    label { display: block; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(250,248,245,0.5); margin-bottom: 6px; }
+    input[type="text"], input[type="number"], textarea, select {
+      width: 100%; background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; padding: 10px 14px;
+      color: #faf8f5; font-family: 'DM Sans', sans-serif; font-size: 14px;
+      outline: none; transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus, select:focus { border-color: rgba(0,196,113,0.5); }
+    textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+    select option { background: #162235; }
+    .btn-generate {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 28px; background: #00c471; color: #0a121f;
+      font-size: 14px; font-weight: 700; border-radius: 9999px; border: none;
+      font-family: 'DM Sans', sans-serif; cursor: pointer;
+      transition: background 0.2s, transform 0.2s; width: 100%;
+      justify-content: center;
+    }
+    .btn-generate:hover { background: #60bb83; transform: translateY(-1px); }
+    .memo-placeholder {
+      color: rgba(250,248,245,0.25); font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      height: 100%; min-height: 320px; text-align: center;
+      flex-direction: column; gap: 12px;
+    }
+    .memo-content { font-size: 13px; line-height: 1.8; color: rgba(250,248,245,0.8); }
+    .memo-content h4 { color: #00c471; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; margin: 16px 0 6px; font-family: 'DM Sans', sans-serif; font-weight: 700; }
+    .memo-content h4:first-child { margin-top: 0; }
+    .memo-content p { color: rgba(250,248,245,0.75); margin-bottom: 4px; }
+    .memo-content .verdict {
+      margin-top: 20px; padding: 14px; border-radius: 10px;
+      font-weight: 600; font-size: 13px; text-align: center;
+    }
+    .verdict-pass { background: rgba(0,196,113,0.12); color: #00c471; border: 1px solid rgba(0,196,113,0.2); }
+    .verdict-fail { background: rgba(225,70,14,0.12); color: #e1460e; border: 1px solid rgba(225,70,14,0.2); }
+    .verdict-watch { background: rgba(239,167,18,0.12); color: #efa712; border: 1px solid rgba(239,167,18,0.2); }
+
+    /* ── Contribution tracker ── */
+    .contrib-chart-wrap { height: 120px; }
+    .contrib-stats { display: flex; gap: 32px; flex-wrap: wrap; margin-top: 20px; }
+    .contrib-stat label { font-size: 11px; }
+    .contrib-stat .val { font-size: 1.1rem; font-weight: 600; }
+
+    /* ── Footer ── */
+    footer {
+      padding: 40px 24px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      text-align: center;
+      font-size: 13px;
+      color: rgba(250,248,245,0.3);
+    }
+    footer a { color: rgba(0,196,113,0.7); text-decoration: none; }
+    footer a:hover { color: #00c471; }
+
+    /* ── Sort indicators ── */
+    .sort-asc::after { content: ' ↑'; color: #00c471; }
+    .sort-desc::after { content: ' ↓'; color: #00c471; }
+
+    /* ── Divider ── */
+    .divider { height: 1px; background: rgba(255,255,255,0.07); border: none; }
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav id="main-nav">
+  <div id="nav-pill">
+    <a class="nav-logo" href="#">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00c471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      Earth<span class="accent">100</span>
+    </a>
+    <div class="nav-links">
+      <a href="#performance">Performance</a>
+      <a href="#allocation">Allocation</a>
+      <a href="#holdings">Holdings</a>
+      <a href="#deal-memo">Deal Memo</a>
+    </div>
+    <span class="sim-badge">Simulation</span>
+  </div>
+</nav>
+
+<!-- ── SIMULATION BANNER ── -->
+<div class="sim-banner">
+  <strong>Simulation mode.</strong> All prices, returns, and portfolio values are illustrative only — not financial advice or real account data.
+</div>
+
+<!-- ── HERO / KPI ── -->
+<section id="hero">
+  <div class="inner">
+    <div class="hero-label">Personal Index · Est. Feb 2021</div>
+    <h1 class="hero-title">Earth<em style="color:#00c471; font-style:italic;">100</em></h1>
+    <p class="hero-sub">100 companies moving humanity toward a sustainable future. $80/week, compounded.</p>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Portfolio Value</div>
+        <div class="kpi-value green" id="kpi-value">$20,633</div>
+        <div class="kpi-sub">as of Apr 2026</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total Invested</div>
+        <div class="kpi-value" id="kpi-invested">$15,358</div>
+        <div class="kpi-sub">since Feb 2021</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total Return</div>
+        <div class="kpi-value green" id="kpi-return">+$5,275</div>
+        <div class="kpi-sub">+34.3% · 6.1% CAGR</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Weekly Contribution</div>
+        <div class="kpi-value">$80</div>
+        <div class="kpi-sub">↑ from $20 at launch</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── PERFORMANCE ── -->
+<section class="section" id="performance">
+  <div class="inner">
+    <div class="section-eyebrow">Index Performance</div>
+    <h2 class="section-title">Earth100 vs. S&amp;P 500</h2>
+    <p class="section-sub">Normalized to 100 at Jan 2016 · backtested for pre-2021 positions</p>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#00c471;"></div>
+            Earth100
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#1772dd;"></div>
+            S&amp;P 500
+          </div>
+        </div>
+        <div style="font-size:12px; color:rgba(250,248,245,0.4);">Simulated · COIN &amp; RKLB backtested pre-IPO</div>
+      </div>
+      <canvas id="perfChart" height="100"></canvas>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── ALLOCATION ── -->
+<section class="section" id="allocation">
+  <div class="inner">
+    <div class="section-eyebrow">Portfolio Allocation</div>
+    <h2 class="section-title">By Category</h2>
+    <p class="section-sub">Weighted by current market value</p>
+
+    <div class="alloc-grid">
+      <div class="donut-wrap">
+        <canvas id="donutChart" width="280" height="280"></canvas>
+      </div>
+      <div>
+        <div class="alloc-table" id="alloc-table"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── HOLDINGS ── -->
+<section class="section" id="holdings">
+  <div class="inner">
+    <div class="section-eyebrow">Current Holdings</div>
+    <h2 class="section-title">Positions</h2>
+    <p class="section-sub">Click a column header to sort · CAGR rule: &ge;25% annual growth to avoid scrutiny</p>
+
+    <div class="holdings-wrap">
+      <table id="holdings-table">
+        <thead>
+          <tr>
+            <th onclick="sortTable(0)">Ticker</th>
+            <th onclick="sortTable(1)">Company</th>
+            <th onclick="sortTable(2)">Category</th>
+            <th onclick="sortTable(3)">Shares</th>
+            <th onclick="sortTable(4)">Avg Cost</th>
+            <th onclick="sortTable(5)">Price</th>
+            <th onclick="sortTable(6)">Value</th>
+            <th onclick="sortTable(7)">Return</th>
+            <th>CAGR Rule</th>
+          </tr>
+        </thead>
+        <tbody id="holdings-body"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── INVESTMENT RULES ── -->
+<section class="section" id="rules">
+  <div class="inner">
+    <div class="section-eyebrow">Investment Philosophy</div>
+    <h2 class="section-title">Earth100 Rules</h2>
+    <p class="section-sub">Three filters every position must pass</p>
+
+    <div class="rules-grid">
+      <div class="rule-card">
+        <div class="rule-num">RULE 01</div>
+        <h3 style="font-size:1.1rem; margin-bottom:8px;">25% CAGR Minimum</h3>
+        <p class="rule-text">Companies growing slower than 25% annually are examined with extra scrutiny. High growth is a prerequisite for outsized impact at scale.</p>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num">RULE 02</div>
+        <h3 style="font-size:1.1rem; margin-bottom:8px;">Sustainable Future</h3>
+        <p class="rule-text">Mission and goals must be actively moving humanity toward a more sustainable world. Not just neutral — directionally positive.</p>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num">RULE 03</div>
+        <h3 style="font-size:1.1rem; margin-bottom:8px;">Clear Growth Path</h3>
+        <p class="rule-text">Every company must demonstrate a credible path: sales velocity → channel expansion → geographic/product expansion → exit or moat formation.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── DEAL MEMO GENERATOR ── -->
+<section class="section" id="deal-memo">
+  <div class="inner">
+    <div class="section-eyebrow">Analysis Tool</div>
+    <h2 class="section-title">Deal Memo Generator</h2>
+    <p class="section-sub">Evaluate a company against Earth100 rules before adding it to your watchlist</p>
+
+    <div class="memo-grid">
+      <div class="memo-form">
+        <div class="field-group">
+          <label>Company / Ticker</label>
+          <input type="text" id="memo-ticker" placeholder="e.g. ENPH — Enphase Energy" />
+        </div>
+        <div class="field-group">
+          <label>Category</label>
+          <select id="memo-cat">
+            <option value="">Select category…</option>
+            <option>Biotech</option>
+            <option>Clean Energy</option>
+            <option>Internet Systems</option>
+            <option>Aerospace</option>
+            <option>Sustainable Mining</option>
+            <option>Clean EV</option>
+            <option>Fixed Income</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Estimated CAGR (%)</label>
+          <input type="number" id="memo-cagr" placeholder="e.g. 38" min="0" max="300" />
+        </div>
+        <div class="field-group">
+          <label>Burn Multiple</label>
+          <input type="number" id="memo-burn" placeholder="e.g. 1.4 (avoid &gt;2x)" step="0.1" />
+        </div>
+        <div class="field-group">
+          <label>Problem / Mission</label>
+          <textarea id="memo-problem" placeholder="What problem does this company solve? How does it move the world forward?"></textarea>
+        </div>
+        <div class="field-group">
+          <label>Growth Path</label>
+          <textarea id="memo-growth" placeholder="Sales → channel expansion → partnerships → exit/moat?"></textarea>
+        </div>
+        <div class="field-group">
+          <label>Thesis / Why Now</label>
+          <textarea id="memo-thesis" placeholder="Why is this company positioned to win in the next 5–10 years?"></textarea>
+        </div>
+        <button class="btn-generate" onclick="generateMemo()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Generate Deal Memo
+        </button>
+      </div>
+      <div class="memo-output">
+        <div class="memo-placeholder" id="memo-placeholder">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(250,248,245,0.2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <span>Fill in the form and generate<br/>your Earth100 deal memo</span>
+        </div>
+        <div class="memo-content" id="memo-output" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <p>Earth100 · Personal portfolio simulation · Not financial advice</p>
+  <p style="margin-top:6px;">Built with the <a href="https://github.com">Earth100 framework</a> · Prices are illustrative only</p>
+</footer>
+
+<script>
+  // ── Nav scroll ──
+  const nav = document.getElementById('main-nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 20);
+  });
+
+  // ── Category colors ──
+  const CAT_COLORS = {
+    'Clean Energy':      '#00c471',
+    'Internet Systems':  '#1772dd',
+    'Biotech':           '#efa712',
+    'Aerospace':         '#13c6b7',
+    'Sust. Mining':      '#4cbb17',
+    'Clean EV':          '#be40cd',
+    'Fixed Income':      '#bfbfbf',
+  };
+
+  // ── Holdings data ──
+  const HOLDINGS = [
+    { ticker:'TSLA', name:'Tesla',                  cat:'Clean Energy',     shares:14,  avg:180.00, price:298.00, cagrEst:42 },
+    { ticker:'COIN', name:'Coinbase',               cat:'Internet Systems', shares:10,  avg:148.00, price:288.00, cagrEst:55 },
+    { ticker:'RKLB', name:'Rocket Lab USA',         cat:'Aerospace',        shares:180, avg:5.80,   price:15.80,  cagrEst:68 },
+    { ticker:'ENPH', name:'Enphase Energy',         cat:'Clean Energy',     shares:12,  avg:100.00, price:148.00, cagrEst:31 },
+    { ticker:'MARA', name:'MARA Holdings',          cat:'Internet Systems', shares:75,  avg:12.00,  price:24.00,  cagrEst:38 },
+    { ticker:'MP',   name:'MP Materials',           cat:'Sust. Mining',     shares:55,  avg:22.00,  price:33.00,  cagrEst:28 },
+    { ticker:'CRSP', name:'CRISPR Therapeutics',    cat:'Biotech',          shares:14,  avg:98.00,  price:82.00,  cagrEst:18 },
+    { ticker:'NTLA', name:'Intellia Therapeutics',  cat:'Biotech',          shares:18,  avg:60.00,  price:42.00,  cagrEst:14 },
+    { ticker:'BEAM', name:'Beam Therapeutics',      cat:'Biotech',          shares:22,  avg:46.00,  price:30.00,  cagrEst:12 },
+    { ticker:'PLUG', name:'Plug Power',             cat:'Clean Energy',     shares:80,  avg:18.00,  price:8.00,   cagrEst:8  },
+    { ticker:'TBIL', name:'Cash & T-Bills',         cat:'Fixed Income',     shares:2100, avg:1.00,  price:1.02,   cagrEst:null },
+  ];
+
+  // ── Derived values ──
+  HOLDINGS.forEach(h => {
+    h.cost  = h.shares * h.avg;
+    h.value = h.shares * h.price;
+    h.gain  = h.value - h.cost;
+    h.gainPct = (h.gain / h.cost) * 100;
+    h.cagrPass = h.cagrEst === null ? null : h.cagrEst >= 25;
+  });
+
+  const totalValue    = HOLDINGS.reduce((s, h) => s + h.value, 0);
+  const totalCost     = HOLDINGS.reduce((s, h) => s + h.cost,  0);
+  const totalGain     = totalValue - totalCost;
+  const totalGainPct  = (totalGain / totalCost) * 100;
+
+  // ── KPI update ──
+  document.getElementById('kpi-value').textContent    = fmt(totalValue);
+  document.getElementById('kpi-invested').textContent = fmt(totalCost);
+  document.getElementById('kpi-return').textContent   = (totalGain >= 0 ? '+' : '') + fmt(totalGain);
+
+  function fmt(n) {
+    return '$' + Math.round(n).toLocaleString('en-US');
+  }
+  function fmtPrice(n) {
+    return '$' + n.toFixed(2);
+  }
+  function fmtPct(n) {
+    return (n >= 0 ? '+' : '') + n.toFixed(1) + '%';
+  }
+
+  // ── Performance chart ──
+  // Jan 2016 → Apr 2026 = 124 months
+  const labels = [];
+  for (let y = 2016; y <= 2026; y++) {
+    const endM = (y === 2026) ? 3 : 11;
+    for (let m = 0; m <= endM; m++) {
+      labels.push(new Date(y, m).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }));
+    }
+  }
+
+  // Earth100 index — normalized to 100 at Jan 2016.
+  // Backtested for COIN/RKLB/MARA/BEAM pre-IPO using sector proxies.
+  // TSLA held since 2016 (~$14 split-adj → $400 peak = 28x) drives significant outperformance.
+  // ENPH also held since 2016 (~$2 → $300 peak = 150x before crashing back).
+  // Key events: EV/solar boom 2017, Q4-2018 selloff, TSLA/ENPH rocket 2020,
+  // clean-energy peak Feb 2021 (portfolio start), rate-hike bear 2022, recovery 2023-25.
+  const earth100 = [
+    // 2016 (12) — TSLA flat, slight lag vs S&P
+    100,  97, 100, 102, 103, 104, 104, 106, 107, 108, 110, 108,
+    // 2017 (12) — TSLA doubles, ENPH + solar surge; Earth100 starts pulling ahead
+    112, 118, 125, 131, 136, 140, 146, 152, 157, 163, 168, 166,
+    // 2018 (12) — TSLA volatile, Model 3 uncertainty; crypto bust
+    168, 170, 168, 164, 160, 156, 153, 148, 146, 136, 124, 132,
+    // 2019 (12) — TSLA recovery + Model 3 ramp; ENPH begins multi-year run
+    136, 142, 150, 158, 164, 168, 175, 184, 190, 198, 210, 205,
+    // 2020 (12) — COVID dip Mar, then TSLA +743% for year; ENPH +570%; Earth100 rockets
+    200, 192, 158, 126, 168, 202, 242, 300, 368, 428, 498, 560,
+    // 2021 (12) — peak Jan-Mar (TSLA ~$400, ENPH ~$280); then sell-off through year
+    590, 608, 580, 554, 560, 566, 556, 530, 514, 492, 456, 450,
+    // 2022 (12) — brutal: TSLA -65%, ENPH -50%, PLUG -80%; deep drawdown
+    428, 396, 362, 322, 288, 248, 270, 244, 214, 228, 196, 190,
+    // 2023 (12) — TSLA recovery; ENPH lagging; uneven rebound
+    204, 194, 216, 224, 228, 252, 272, 258, 244, 232, 268, 290,
+    // 2024 (12) — TSLA post-election surge; AI + biotech tailwind
+    308, 328, 352, 330, 358, 376, 374, 402, 418, 444, 502, 540,
+    // 2025 (12) — TSLA volatile (DOGE/tariff headwinds); portfolio diversification buffers
+    550, 516, 532, 504, 520, 540, 548, 558, 570, 590, 604, 618,
+    // 2026 Jan–Apr (4)
+    632, 604, 620, 630
+  ];
+
+  // S&P 500 — normalized to 100 at Jan 2016.
+  // Approximate total return index (dividends reinvested).
+  const sp500 = [
+    // 2016 (12)
+    100,  98, 101, 104, 105, 106, 108, 109, 110, 111, 114, 114,
+    // 2017 (12)
+    114, 117, 119, 121, 123, 124, 127, 129, 130, 133, 137, 143,
+    // 2018 (12)
+    143, 146, 148, 150, 151, 152, 155, 158, 158, 153, 143, 138,
+    // 2019 (12)
+    138, 143, 148, 154, 159, 159, 163, 167, 170, 175, 181, 188,
+    // 2020 (12) — COVID crash Feb-Mar, V-shaped recovery
+    188, 183, 160, 136, 160, 173, 179, 188, 194, 199, 208, 222,
+    // 2021 (12)
+    222, 230, 237, 241, 247, 252, 258, 264, 266, 272, 278, 292,
+    // 2022 (12)
+    292, 280, 268, 252, 240, 222, 234, 226, 204, 212, 200, 204,
+    // 2023 (12)
+    204, 198, 208, 212, 215, 227, 234, 228, 218, 210, 234, 244,
+    // 2024 (12)
+    244, 252, 263, 252, 262, 268, 267, 278, 284, 296, 318, 330,
+    // 2025 (12)
+    330, 312, 316, 300, 308, 318, 324, 332, 340, 350, 364, 374,
+    // 2026 Jan–Apr (4)
+    380, 366, 374, 382
+  ];
+
+  new Chart(document.getElementById('perfChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Earth100',
+          data: earth100,
+          borderColor: '#00c471',
+          backgroundColor: 'rgba(0,196,113,0.06)',
+          borderWidth: 2.5,
+          fill: true,
+          tension: 0.35,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHoverBackgroundColor: '#00c471',
+        },
+        {
+          label: 'S&P 500',
+          data: sp500,
+          borderColor: '#1772dd',
+          backgroundColor: 'rgba(23,114,221,0.04)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.35,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHoverBackgroundColor: '#1772dd',
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: 'rgba(250,248,245,0.4)', maxTicksLimit: 10, font: { family: 'DM Sans', size: 11 } }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: 'rgba(250,248,245,0.4)', font: { family: 'DM Sans', size: 11 }, callback: v => v.toFixed(0) },
+          title: { display: true, text: 'Index Value (Jan 2016 = 100)', color: 'rgba(250,248,245,0.3)', font: { size: 11 } }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(10,18,31,0.95)',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#faf8f5',
+          bodyColor: 'rgba(250,248,245,0.7)',
+          padding: 12,
+          callbacks: {
+            label: ctx => `  ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}`
+          }
+        },
+      }
+    }
+  });
+
+  // ── Allocation donut + table ──
+  const catTotals = {};
+  HOLDINGS.forEach(h => {
+    catTotals[h.cat] = (catTotals[h.cat] || 0) + h.value;
+  });
+  const catEntries = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
+
+  new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: {
+      labels: catEntries.map(([cat]) => cat),
+      datasets: [{
+        data: catEntries.map(([, v]) => v),
+        backgroundColor: catEntries.map(([cat]) => CAT_COLORS[cat] || '#bfbfbf'),
+        borderColor: '#0a121f',
+        borderWidth: 3,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(10,18,31,0.95)',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#faf8f5',
+          bodyColor: 'rgba(250,248,245,0.7)',
+          padding: 12,
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${((ctx.parsed / totalValue) * 100).toFixed(1)}%'`
+          }
+        }
+      }
+    }
+  });
+
+  const allocTable = document.getElementById('alloc-table');
+  catEntries.forEach(([cat, val]) => {
+    const pct = (val / totalValue) * 100;
+    const color = CAT_COLORS[cat] || '#bfbfbf';
+    allocTable.insertAdjacentHTML('beforeend', `
+      <div class="alloc-row">
+        <div class="alloc-swatch" style="background:${color};"></div>
+        <div class="alloc-name">${cat}</div>
+        <div class="alloc-bar-wrap">
+          <div class="alloc-bar" style="width:${pct}%; background:${color};"></div>
+        </div>
+        <div class="alloc-pct">${pct.toFixed(1)}%</div>
+        <div class="alloc-val">${fmt(val)}</div>
+      </div>
+    `);
+  });
+
+  // ── Holdings table ──
+  let sortCol = 6, sortDir = -1;
+
+  function renderHoldings() {
+    const sorted = [...HOLDINGS].sort((a, b) => {
+      const vals = [
+        [a.ticker, b.ticker],
+        [a.name, b.name],
+        [a.cat, b.cat],
+        [a.shares, b.shares],
+        [a.avg, b.avg],
+        [a.price, b.price],
+        [a.value, b.value],
+        [a.gainPct, b.gainPct],
+      ];
+      const [av, bv] = vals[sortCol];
+      if (typeof av === 'string') return sortDir * av.localeCompare(bv);
+      return sortDir * (av - bv);
+    });
+
+    const tbody = document.getElementById('holdings-body');
+    tbody.innerHTML = '';
+    sorted.forEach(h => {
+      const color = CAT_COLORS[h.cat] || '#bfbfbf';
+      const cagrBadge = h.cagrPass === null
+        ? `<span class="cagr-na">N/A</span>`
+        : h.cagrPass
+          ? `<span class="cagr-pass">✓ ${h.cagrEst}%</span>`
+          : `<span class="cagr-fail">✗ ${h.cagrEst}%</span>`;
+
+      tbody.insertAdjacentHTML('beforeend', `
+        <tr>
+          <td class="ticker-cell">${h.ticker}</td>
+          <td class="name-cell">${h.name}</td>
+          <td><span class="cat-pill" style="background:${color}22; color:${color}; border:1px solid ${color}33;">${h.cat}</span></td>
+          <td>${h.shares.toLocaleString()}</td>
+          <td>${fmtPrice(h.avg)}</td>
+          <td>${fmtPrice(h.price)}</td>
+          <td>${fmt(h.value)}</td>
+          <td class="${h.gainPct >= 0 ? 'gain-positive' : 'gain-negative'}">${fmtPct(h.gainPct)}</td>
+          <td>${cagrBadge}</td>
+        </tr>
+      `);
+    });
+
+    // Update sort indicators
+    document.querySelectorAll('thead th').forEach((th, i) => {
+      th.className = '';
+      if (i === sortCol) th.className = sortDir === 1 ? 'sort-asc' : 'sort-desc';
+    });
+  }
+
+  function sortTable(col) {
+    if (sortCol === col) { sortDir *= -1; }
+    else { sortCol = col; sortDir = -1; }
+    renderHoldings();
+  }
+
+  renderHoldings();
+
+  // ── Deal memo generator ──
+  function generateMemo() {
+    const ticker  = document.getElementById('memo-ticker').value.trim();
+    const cat     = document.getElementById('memo-cat').value;
+    const cagrVal = parseFloat(document.getElementById('memo-cagr').value);
+    const burn    = parseFloat(document.getElementById('memo-burn').value);
+    const problem = document.getElementById('memo-problem').value.trim();
+    const growth  = document.getElementById('memo-growth').value.trim();
+    const thesis  = document.getElementById('memo-thesis').value.trim();
+
+    if (!ticker) { alert('Enter a company or ticker to generate a memo.'); return; }
+
+    const cagrPass = !isNaN(cagrVal) && cagrVal >= 25;
+    const burnPass = isNaN(burn) || burn <= 2;
+    const missionPass = problem.length > 10;
+
+    const allPass = cagrPass && burnPass && missionPass;
+    const anyFail = !cagrPass || !burnPass;
+
+    let verdictClass = allPass ? 'verdict-pass' : anyFail ? 'verdict-fail' : 'verdict-watch';
+    let verdictText  = allPass
+      ? '✓ Passes Earth100 filters — add to watchlist'
+      : anyFail
+        ? '✗ Fails one or more Earth100 rules — needs work'
+        : '~ Partial — monitor before adding';
+
+    const cagrStr  = isNaN(cagrVal) ? 'N/A' : `${cagrVal}%`;
+    const burnStr  = isNaN(burn)    ? 'N/A'  : burn.toFixed(1) + 'x';
+    const dateStr  = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+    const html = `
+      <h4>Deal Memo</h4>
+      <p><strong>${ticker}</strong>${cat ? ' · ' + cat : ''}</p>
+      <p style="color:rgba(250,248,245,0.4); font-size:12px;">${dateStr} · Earth100 Analysis</p>
+
+      <h4>Problem / Mission</h4>
+      <p>${problem || '—'}</p>
+
+      <h4>Growth Path</h4>
+      <p>${growth || '—'}</p>
+
+      <h4>Thesis</h4>
+      <p>${thesis || '—'}</p>
+
+      <h4>Earth100 Filter Check</h4>
+      <p>
+        ${cagrPass ? '✓' : '✗'} CAGR ≥25%: <strong>${cagrStr}</strong><br/>
+        ${burnPass ? '✓' : '✗'} Burn Multiple ≤2x: <strong>${burnStr}</strong><br/>
+        ${missionPass ? '✓' : '✗'} Mission aligns with sustainable future
+      </p>
+
+      <div class="verdict ${verdictClass}">${verdictText}</div>
+    `;
+
+    document.getElementById('memo-placeholder').style.display = 'none';
+    const out = document.getElementById('memo-output');
+    out.style.display = 'block';
+    out.innerHTML = html;
+  }
+</script>
+</body>
+</html>
